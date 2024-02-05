@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 3
+names: ['Board', 'Red Piece', 'Yellow Piece']
+
+roboflow:
+  workspace: projects-zidii
+  project: connect4
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/projects-zidii/connect4/dataset/1
