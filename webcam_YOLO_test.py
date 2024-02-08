@@ -1,6 +1,5 @@
 from ultralytics import YOLO
 import cv2
-import math 
 import time
 # start webcam
 cap = cv2.VideoCapture(0)
@@ -13,6 +12,7 @@ model = YOLO("best.pt")
 # object classes
 classNames = ["Board", "Red Piece", "Yellow Piece"]
 
+# Choose how often frames are read
 frame_rate = 1
 prev = 0
 
