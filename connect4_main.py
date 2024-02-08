@@ -26,6 +26,7 @@ RED = (255,0,0)
 YELLOW = (255,255,0)
 GREY = (214,214,214)
 BLACK = (30,30,30)
+GREEN = (0,255,0)
 
 # init webcam and pygame
 camera = cv2.VideoCapture(0)
@@ -117,9 +118,7 @@ def draw_menu():
 
     pygame.display.flip()
 
-    return (y_button, r_button)
-
-                    
+    return (y_button, r_button)                  
 
 def draw_board(board):
     # create board
@@ -137,14 +136,49 @@ def draw_board(board):
                                                 ((c+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((r+.5)*BOARD_H/ROWS)), RADIUS)
     pygame.display.flip()
 
+# Search the board to ensure it follows proper connect4 rules
+def get_best_board(old_board, new_board):
+    # check to make sure no floating pieces
+    for c in range(COLUMNS):
+        found = False
+        for r in range(ROWS):
+            if new_board[r, c] != 0:
+                found = True
+                continue
+            if found and new_board[r, c] == 0:
+                return old_board
+
+    # make sure there is the proper amount of pieces
+    unique, counts = np.unique(new_board, return_counts=True)
+    piece_count = dict(zip(unique, counts))
+    if piece_count.get(1) == None or piece_count.get(-1) == None:
+        if piece_count.get(1) == None and piece_count.get(-1) == None:
+            return new_board
+        elif (piece_count.get(1) == None and first_player == "yellow" and piece_count.get(-1) == 1) \
+        or (piece_count.get(-1) == None and first_player == "red" and piece_count.get(1) == 1):
+            return new_board
+        else:
+            return old_board
+    elif piece_count[1] == piece_count[-1]:
+        return new_board
+    elif first_player == "red" and (piece_count[1]-1) == piece_count[-1]:
+        return new_board
+    elif first_player == "yellow" and (piece_count[-1]-1) == piece_count[1]:
+        return new_board
+    else:
+        return old_board
+
 # Main
 try:
-    #pygame.time.set_timer(READ_EVENT, 5)
+    old_board = np.zeros((ROWS,COLUMNS))
+    board = np.zeros((ROWS,COLUMNS))
     while True:
         # read frame and get predictions
         ret, image = camera.read()
         results = model(image, stream=True)
 
+        # save old board, get new board
+        old_board = board
         board = read_frame(results)
 
         ## Play connect4 here using refrenced board
@@ -152,6 +186,7 @@ try:
             buttons = draw_menu()
 
         if state == "board":
+            board = get_best_board(old_board, board)
             draw_board(board)
 
         for event in pygame.event.get():
