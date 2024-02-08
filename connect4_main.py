@@ -18,6 +18,7 @@ HEIGHT = 720
 RADIUS = 30
 BOARD_H = 6*100
 BOARD_W = 7*100
+READ_EVENT = pygame.USEREVENT+1
 
 BLUE = (0,0,255)
 WHITE = (255,255,255)
@@ -32,7 +33,8 @@ pygame.init()
 pygame.display.set_caption("Computer Vision Connect4")
 screen = pygame.display.set_mode([WIDTH,HEIGHT])
 model = YOLO("best.pt")
-in_game = False
+state = "start_menu"
+first_player = ""
 
 def read_frame(results):
     # init board
@@ -96,61 +98,74 @@ def read_frame(results):
             #     print("")
     return board
 
+def draw_menu():
+    # show menu
+    screen.fill(GREY)
+    prompt =  pygame.image.load("assets/prompt1.png").convert_alpha()
+    screen.blit(prompt, ((WIDTH/2)-(prompt.get_width()/2), (HEIGHT/2)-(prompt.get_height()/2)-100))
+    
+    red_prompt =  pygame.image.load("assets/red_prompt.png").convert_alpha()
+    yellow_prompt =  pygame.image.load("assets/yellow_prompt.png").convert_alpha()
+    
+    r_button = pygame.Rect((WIDTH/3)-(red_prompt.get_width()/2), (3*HEIGHT/4)-(red_prompt.get_height()/2), red_prompt.get_width(), red_prompt.get_height())
+    y_button = pygame.Rect((2*WIDTH/3)-(yellow_prompt.get_width()/2), (3*HEIGHT/4)-(yellow_prompt.get_height()/2), yellow_prompt.get_width(), yellow_prompt.get_height())
+
+    pygame.draw.rect(screen, GREY, r_button)
+    pygame.draw.rect(screen, GREY, y_button)
+    screen.blit(red_prompt, r_button)
+    screen.blit(yellow_prompt, y_button)
+
+    pygame.display.flip()
+
+    return (y_button, r_button)
+
+                    
+
+def draw_board(board):
+    # create board
+    screen.fill(GREY)
+    pygame.draw.rect(screen, BLUE, pygame.Rect((WIDTH/2)-(BOARD_W/2), (HEIGHT/2)-(BOARD_H/2), BOARD_W, BOARD_H))
+    for r in range(ROWS):
+        for c in range(COLUMNS):
+            color = BLACK
+            if board[r, c] == 1:
+                color = RED
+            elif board[r, c] == -1:
+                color = YELLOW
+            
+            pygame.draw.circle(screen, color, ((WIDTH/2)-(BOARD_W/2) +
+                                                ((c+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((r+.5)*BOARD_H/ROWS)), RADIUS)
+    pygame.display.flip()
+
+# Main
 try:
+    #pygame.time.set_timer(READ_EVENT, 5)
     while True:
         # read frame and get predictions
         ret, image = camera.read()
         results = model(image, stream=True)
 
-        # read image once every 3 seconds
-        if pygame.time.get_ticks() % 3000 == 0:
-            print("REACHED")#scanned_board = read_frame(results)
+        board = read_frame(results)
 
         ## Play connect4 here using refrenced board
-        # show menu
-        screen.fill(GREY)
-        prompt =  pygame.image.load("assets/prompt1.png").convert_alpha()
-        screen.blit(prompt, ((WIDTH/2)-(prompt.get_width()/2), (HEIGHT/2)-(prompt.get_height()/2)-100))
-        
-        red_prompt =  pygame.image.load("assets/red_prompt.png").convert_alpha()
-        yellow_prompt =  pygame.image.load("assets/yellow_prompt.png").convert_alpha()
-        
-        r_button = pygame.Rect((WIDTH/3)-(red_prompt.get_width()/2), (3*HEIGHT/4)-(red_prompt.get_height()/2), red_prompt.get_width(), red_prompt.get_height())
-        y_button = pygame.Rect((2*WIDTH/3)-(yellow_prompt.get_width()/2), (3*HEIGHT/4)-(yellow_prompt.get_height()/2), yellow_prompt.get_width(), yellow_prompt.get_height())
+        if state == "start_menu":
+            buttons = draw_menu()
 
-        pygame.draw.rect(screen, GREY, r_button)
-        pygame.draw.rect(screen, GREY, y_button)
-        screen.blit(red_prompt, r_button)
-        screen.blit(yellow_prompt, y_button)
-
-        pygame.display.flip()
-
-        while not in_game:
-            for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if y_button.collidepoint(event.pos):
-                        in_game = True
-                    elif r_button.collidepoint(event.pos):
-                        in_game = True
-                elif event.type == KEYDOWN or event.type == pygame.QUIT:
-                  pygame.display.quit()
-                  pygame.quit()
-                  sys.exit(0)
-
-        # create board
-        screen.fill(GREY)
-        pygame.draw.rect(screen, BLUE, pygame.Rect((WIDTH/2)-(BOARD_W/2), (HEIGHT/2)-(BOARD_H/2), BOARD_W, BOARD_H))
-        for c in range(COLUMNS):
-            for r in range(ROWS):
-                pygame.draw.circle(screen, BLACK, ((WIDTH/2)-(BOARD_W/2) +
-                                                   ((c+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((r+.5)*BOARD_H/ROWS)), RADIUS)
-        pygame.display.flip()
+        if state == "board":
+            draw_board(board)
 
         for event in pygame.event.get():
-              if event.type == KEYDOWN or event.type == pygame.QUIT:
+            if event.type == KEYDOWN or event.type == pygame.QUIT:
                   pygame.display.quit()
                   pygame.quit()
                   sys.exit(0)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if buttons[0].collidepoint(event.pos):
+                    state = "board"
+                    first_player = "yellow"
+                elif buttons[1].collidepoint(event.pos):
+                    state = "board"
+                    first_player = "red"
                             
 except KeyboardInterrupt or SystemExit:
     pygame.quit()
