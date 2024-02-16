@@ -7,10 +7,10 @@ cap.set(3, 640)
 cap.set(4, 480)
 
 # model
-model = YOLO("runs/detect/yolov8n_connect4/weights/best.pt")
+model = YOLO("runs/detect/yolov8n_connect44/weights/best.pt")
 
 # object classes
-classNames = ["Board", "Red Piece", "Yellow Piece"]
+classNames = ["Board", "Red Piece", "Yellow Piece", "No Piece"]
 
 # Choose how often frames are read
 frame_rate = 1
@@ -87,7 +87,7 @@ while True:
 
                     if piece[0] == "Red Piece":
                         board[row][col] = "r"
-                    else:
+                    elif piece[0] == "Yellow Piece":
                         board[row][col] = "y"
 
                 for x in range(len(board)):
