@@ -178,6 +178,10 @@ def get_best_board(old_board, new_board):
     else:
         return old_board
 
+# convert 2D array into solver format string
+def convert_board(board):
+    pass
+
 # Main
 try:
     old_board = np.zeros((ROWS,COLUMNS))
