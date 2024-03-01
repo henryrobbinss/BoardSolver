@@ -35,7 +35,7 @@ camera = cv2.VideoCapture(0)
 pygame.init()
 pygame.display.set_caption("Computer Vision Connect4")
 screen = pygame.display.set_mode([WIDTH,HEIGHT])
-model = YOLO("runs/detect/yolov8n_connect44/weights/best.pt")
+model = YOLO("runs/detect/yolov8n_connect4/weights/best.pt")
 
 # game states
 state = "start_menu"
@@ -99,10 +99,10 @@ def read_frame(results):
                     board[row, col] = -1
 
             # print board for debugging purposes
-            # for x in range(len(board)):
-            #     for y in range(len(board[x])):
-            #         print(board[x][y], end=" ")
-            #     print("")
+            for x in range(len(board)):
+                for y in range(len(board[x])):
+                    print(board[x][y], end=" ")
+                print("")
     return board
 
 def draw_menu():

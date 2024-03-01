@@ -1,3 +1,3 @@
 import example
 
-print(example.solve("4"))
+print(example.solve("172737"))

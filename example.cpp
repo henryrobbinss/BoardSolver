@@ -8,10 +8,8 @@
 #include <string>
 
 int add(int i, int j) {
-    return i + j;
+  return i + j;
 }
-
-using namespace GameSolver::Connect4;
 
 /**
  * Main function.
@@ -25,16 +23,21 @@ using namespace GameSolver::Connect4;
  *  will generate an error message to standard error and an empty line to standard output.
  */
 int solve(std::string line) {
-  Solver solver;
+  GameSolver::Connect4::Solver solver;
   bool weak = false;
 
   std::string opening_book = "solver/7x6.book";
 
   solver.loadBook(opening_book);
 
-  Position P;
-  std::vector<int> scores = solver.analyze(P, weak);
-  return *std::max_element(scores.begin(), scores.end());
+  GameSolver::Connect4::Position P;
+  if(P.play(line) != line.size()) {
+    std::cerr << "Invalid move: " << (P.nbMoves() + 1) << " \"" << line << "\"" << std::endl;
+  } else {
+    std::vector<int> scores = solver.analyze(P, weak);
+    return std::distance(scores.begin(), std::max_element(scores.begin(), scores.end())) + 1;
+  }
+  return -1;
 }
 
 PYBIND11_MODULE(example, m) {

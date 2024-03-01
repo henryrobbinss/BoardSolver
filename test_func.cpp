@@ -16,7 +16,7 @@
  * along with Connect4 Game Solver. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Solver.hpp"
+#include "solver/Solver.hpp"
 #include <iostream>
 
 using namespace GameSolver::Connect4;
@@ -36,7 +36,7 @@ int main() {
   Solver solver;
   bool weak = false;
 
-  std::string opening_book = "solver/7x6.book";
+  std::string opening_book = "7x6.book";
 
   solver.loadBook(opening_book);
 
