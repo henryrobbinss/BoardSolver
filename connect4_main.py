@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import sys
 from ultralytics import YOLO
-import time
+import example
 
 # CONSTANTS
 ROWS = 6
@@ -103,6 +103,7 @@ def read_frame(results):
                 for y in range(len(board[x])):
                     print(board[x][y], end=" ")
                 print("")
+            print("Move seq: " + convert_board(board))
     return board
 
 def draw_menu():
@@ -129,6 +130,13 @@ def draw_menu():
 def draw_board(image, board):
     # create board
     screen.fill(GREY)
+
+    # Make this the 
+    # red_prompt =  pygame.image.load("assets/red_prompt.png").convert_alpha()    
+    # r_button = pygame.Rect((WIDTH/3)-(red_prompt.get_width()/2), (3*HEIGHT/4)-(red_prompt.get_height()/2), red_prompt.get_width(), red_prompt.get_height())
+    # pygame.draw.rect(screen, GREY, r_button)
+    # screen.blit(red_prompt, r_button)
+
     pygame.draw.rect(screen, BLUE, pygame.Rect((WIDTH/2)-(BOARD_W/2), (HEIGHT/2)-(BOARD_H/2), BOARD_W, BOARD_H))
     for r in range(ROWS):
         for c in range(COLUMNS):
@@ -140,9 +148,14 @@ def draw_board(image, board):
             
             pygame.draw.circle(screen, color, ((WIDTH/2)-(BOARD_W/2) +
                                                 ((c+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((r+.5)*BOARD_H/ROWS)), RADIUS)
-    # TODO : fix this to display properly
-    # camera_surf = pygame.image.frombuffer(image.tobytes(), image.shape[1::-1], "BGR")
-    # screen.blit(camera_surf, (0, 0))
+    
+    # col = example.solve(convert_board(board))
+    col = 4 - 1
+    for i in range(ROWS-1, -1, -1):
+        if board[i, col] == 0:
+            pygame.draw.circle(screen, GREEN, ((WIDTH/2)-(BOARD_W/2) +
+                            ((col+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((i+.5)*BOARD_H/ROWS)), RADIUS)
+            break
     pygame.display.flip()
 
 # Search the board to ensure it follows proper connect4 rules
@@ -180,7 +193,33 @@ def get_best_board(old_board, new_board):
 
 # convert 2D array into solver format string
 def convert_board(board):
-    pass
+    pending_moves = []
+    next = first_player
+    finalString = ""
+    for row in board:
+        for i in range(len(row)):
+            if row[i] == 0:
+                continue
+            elif next == "red" and row[i] == RED_PIECE:
+                finalString = finalString.join(str(i + 1))
+                if len(pending_moves) != 0:
+                    finalString = finalString.join(str(pending_moves[0]))
+                    pending_moves[0] = pending_moves[-1]
+                    pending_moves.pop()
+                else:
+                    next = "yellow"
+            elif next == "yellow" and row[i] == YELLOW_PIECE:
+                finalString = finalString.join(str(i + 1))
+                if len(pending_moves) != 0:
+                    finalString = finalString.join(str(pending_moves[0]))
+                    pending_moves[0] = pending_moves[-1]
+                    pending_moves.pop()
+                else:
+                    next = "red"
+            else:
+                pending_moves.append(str(i + 1))
+    finalString = finalString.join(pending_moves)
+    return finalString
 
 # Main
 try:
