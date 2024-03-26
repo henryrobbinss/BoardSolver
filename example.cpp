@@ -7,10 +7,6 @@
 #include <vector>
 #include <string>
 
-int add(int i, int j) {
-  return i + j;
-}
-
 /**
  * Main function.
  * Reads Connect 4 positions, line by line, from standard input
