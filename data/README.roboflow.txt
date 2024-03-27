@@ -1,8 +1,8 @@
 
-Connect4 - v1 2024-02-05 2:42pm
+Connect4 - v3 2024-02-13 5:04pm
 ==============================
 
-This dataset was exported via roboflow.com on February 5, 2024 at 7:58 PM GMT
+This dataset was exported via roboflow.com on February 13, 2024 at 10:05 PM GMT
 
 Roboflow is an end-to-end computer vision platform that helps you
 * collaborate with your team on computer vision projects

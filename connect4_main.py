@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import sys
 from ultralytics import YOLO
-import time
+import example
 
 # CONSTANTS
 ROWS = 6
@@ -12,14 +12,16 @@ COLUMNS = 7
 RED_PIECE = 1
 YELLOW_PIECE = -1
 EMPTY = 0
-CLASS_NAMES = ["Board", "Red Piece", "Yellow Piece"]
+CLASS_NAMES = ["Board", "Red Piece", "Yellow Piece", "No Piece"]
 WIDTH = 1280
 HEIGHT = 720
 RADIUS = 30
 BOARD_H = 6*100
 BOARD_W = 7*100
 READ_EVENT = pygame.USEREVENT+1
+WIN_LENGTH = 4
 
+# color constants
 BLUE = (0,0,255)
 WHITE = (255,255,255)
 RED = (255,0,0)
@@ -28,14 +30,18 @@ GREY = (214,214,214)
 BLACK = (30,30,30)
 GREEN = (0,255,0)
 
-# init webcam and pygame
+# init webcam, cv-model, and pygame
 camera = cv2.VideoCapture(0)
 pygame.init()
 pygame.display.set_caption("Computer Vision Connect4")
 screen = pygame.display.set_mode([WIDTH,HEIGHT])
-model = YOLO("best.pt")
+model = YOLO("runs/detect/yolov8n_connect4/weights/best.pt")
+
+# game states
 state = "start_menu"
 first_player = ""
+playing_piece = 1
+played_piece = -1
 
 def read_frame(results):
     # init board
@@ -63,14 +69,14 @@ def read_frame(results):
             if CLASS_NAMES[cls] == "Board":
                 board_dims = (x1, y1, x2, y2)
                 board_found = True
-            else:
+            elif CLASS_NAMES[cls] != "No Piece":
                 pieces.append((CLASS_NAMES[cls], x1, y1, x2, y2))
             
         if board_found:
             width = board_dims[2] - board_dims[0]
             height = board_dims[3] - board_dims[1]
 
-            # may need to edit these value if mirroring is an issue
+            # may need to edit these value if mirroring is an issue on non webcam cameras
             columns = [int(width/14)+board_dims[0], int(width/14 + width/7)+board_dims[0],
                         int(width/14 + 2*width/7)+board_dims[0], int(width/14 + 3*width/7)+board_dims[0],
                         int(width/14 + 4*width/7)+board_dims[0], int(width/14 + 5*width/7)+board_dims[0],
@@ -93,10 +99,11 @@ def read_frame(results):
                     board[row, col] = -1
 
             # print board for debugging purposes
-            # for x in range(len(board)):
-            #     for y in range(len(board[x])):
-            #         print(board[x][y], end=" ")
-            #     print("")
+            for x in range(len(board)):
+                for y in range(len(board[x])):
+                    print(board[x][y], end=" ")
+                print("")
+            print("Move seq: " + convert_board(board))
     return board
 
 def draw_menu():
@@ -120,9 +127,20 @@ def draw_menu():
 
     return (y_button, r_button)                  
 
-def draw_board(board):
+def draw_board(board, col):
     # create board
     screen.fill(GREY)
+
+    lock_prompt =  pygame.image.load("assets/lock_prompt.png").convert_alpha()    
+    lock_button = pygame.Rect((lock_prompt.get_width()/2), (HEIGHT)-(lock_prompt.get_height()+50), lock_prompt.get_width(), lock_prompt.get_height())
+    pygame.draw.rect(screen, GREY, lock_button)
+    screen.blit(lock_prompt, lock_button)
+
+    scan_prompt =  pygame.image.load("assets/scan_prompt.png").convert_alpha()    
+    scan_button = pygame.Rect((scan_prompt.get_width()/2), (HEIGHT)-(scan_prompt.get_height()+150), scan_prompt.get_width(), scan_prompt.get_height())
+    pygame.draw.rect(screen, GREY, scan_button)
+    screen.blit(scan_prompt, scan_button)
+
     pygame.draw.rect(screen, BLUE, pygame.Rect((WIDTH/2)-(BOARD_W/2), (HEIGHT/2)-(BOARD_H/2), BOARD_W, BOARD_H))
     for r in range(ROWS):
         for c in range(COLUMNS):
@@ -134,11 +152,22 @@ def draw_board(board):
             
             pygame.draw.circle(screen, color, ((WIDTH/2)-(BOARD_W/2) +
                                                 ((c+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((r+.5)*BOARD_H/ROWS)), RADIUS)
+    
+    if col != -1:
+        col = col - 1 #Adjust for indexing
+        for i in range(ROWS-1, -1, -1):
+            if board[i, col] == 0:
+                pygame.draw.circle(screen, GREEN, ((WIDTH/2)-(BOARD_W/2) +
+                                ((col+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((i+.5)*BOARD_H/ROWS)), RADIUS)
+                break
+
     pygame.display.flip()
+
+    return (lock_button, scan_button)
 
 # Search the board to ensure it follows proper connect4 rules
 def get_best_board(old_board, new_board):
-    # check to make sure no floating pieces
+    # check to make sure no 'floating' pieces
     for c in range(COLUMNS):
         found = False
         for r in range(ROWS):
@@ -149,37 +178,73 @@ def get_best_board(old_board, new_board):
                 return old_board
 
     # make sure there is the proper amount of pieces
+    # count the number of unique entries and zip into dict
     unique, counts = np.unique(new_board, return_counts=True)
     piece_count = dict(zip(unique, counts))
+
+    #detect if none or only piece type exists then only the player that went first has played or no one has played
     if piece_count.get(1) == None or piece_count.get(-1) == None:
-        if piece_count.get(1) == None and piece_count.get(-1) == None:
-            return new_board
-        elif (piece_count.get(1) == None and first_player == "yellow" and piece_count.get(-1) == 1) \
-        or (piece_count.get(-1) == None and first_player == "red" and piece_count.get(1) == 1):
+        if (piece_count.get(1) == None and piece_count.get(-1) == None) or \
+           (piece_count.get(1) == None and first_player == "yellow" and piece_count.get(-1) == 1) or \
+           (piece_count.get(-1) == None and first_player == "red" and piece_count.get(1) == 1):
             return new_board
         else:
             return old_board
-    elif piece_count[1] == piece_count[-1]:
-        return new_board
-    elif first_player == "red" and (piece_count[1]-1) == piece_count[-1]:
-        return new_board
-    elif first_player == "yellow" and (piece_count[-1]-1) == piece_count[1]:
+    # make sure proper number of pieces are present depending on who went first
+    elif piece_count[1] == piece_count[-1] or \
+        first_player == "red" and (piece_count[1]-1) == piece_count[-1] or \
+        first_player == "yellow" and (piece_count[-1]-1) == piece_count[1]:
         return new_board
     else:
         return old_board
+
+# convert 2D array into solver format string
+def convert_board(board):
+    board = np.flipud(board)
+    pending_moves = []
+    next = first_player
+    finalString = ""
+    for row in board:
+        for i in range(len(row)):
+            if row[i] == 0:
+                continue
+            elif next == "red" and row[i] == RED_PIECE:
+                finalString = "".join([finalString, str(i + 1)])
+                if len(pending_moves) != 0:
+                    finalString = "".join([finalString, str(pending_moves[0])])
+                    pending_moves[0] = pending_moves[-1]
+                    pending_moves.pop()
+                else:
+                    next = "yellow"
+            elif next == "yellow" and row[i] == YELLOW_PIECE:
+                finalString = "".join([finalString, str(i + 1)])
+                if len(pending_moves) != 0:
+                    finalString = "".join([finalString, str(pending_moves[0])])
+                    pending_moves[0] = pending_moves[-1]
+                    pending_moves.pop()
+                else:
+                    next = "red"
+            else:
+                pending_moves.append(str(i + 1))
+    finalString = "".join([finalString] + pending_moves)
+    return finalString
 
 # Main
 try:
     old_board = np.zeros((ROWS,COLUMNS))
     board = np.zeros((ROWS,COLUMNS))
+    scan = True
+    solving = False
+    col = -1
     while True:
-        # read frame and get predictions
-        ret, image = camera.read()
-        results = model(image, stream=True)
+        if scan:
+            # read frame and get predictions
+            ret, image = camera.read()
+            results = model(image, stream=True)
 
-        # save old board, get new board
-        old_board = board
-        board = read_frame(results)
+            # save old board, get new board
+            old_board = board
+            board = read_frame(results)
 
         ## Play connect4 here using refrenced board
         if state == "start_menu":
@@ -187,7 +252,7 @@ try:
 
         if state == "board":
             board = get_best_board(old_board, board)
-            draw_board(board)
+            board_buttons = draw_board(board, col)
 
         for event in pygame.event.get():
             if event.type == KEYDOWN or event.type == pygame.QUIT:
@@ -201,6 +266,14 @@ try:
                 elif buttons[1].collidepoint(event.pos):
                     state = "board"
                     first_player = "red"
+                elif board_buttons[0].collidepoint(event.pos) and not solving:
+                    scan = False
+                    col = example.solve(convert_board(board))
+                    solving = True
+                elif board_buttons[1].collidepoint(event.pos) and solving:
+                    scan = True
+                    col = -1
+                    solving = False
                             
 except KeyboardInterrupt or SystemExit:
     pygame.quit()
