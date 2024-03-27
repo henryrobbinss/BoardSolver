@@ -127,15 +127,19 @@ def draw_menu():
 
     return (y_button, r_button)                  
 
-def draw_board(image, board):
+def draw_board(board, col):
     # create board
     screen.fill(GREY)
 
-    # Make this the 
-    # red_prompt =  pygame.image.load("assets/red_prompt.png").convert_alpha()    
-    # r_button = pygame.Rect((WIDTH/3)-(red_prompt.get_width()/2), (3*HEIGHT/4)-(red_prompt.get_height()/2), red_prompt.get_width(), red_prompt.get_height())
-    # pygame.draw.rect(screen, GREY, r_button)
-    # screen.blit(red_prompt, r_button)
+    lock_prompt =  pygame.image.load("assets/lock_prompt.png").convert_alpha()    
+    lock_button = pygame.Rect((lock_prompt.get_width()/2), (HEIGHT)-(lock_prompt.get_height()+50), lock_prompt.get_width(), lock_prompt.get_height())
+    pygame.draw.rect(screen, GREY, lock_button)
+    screen.blit(lock_prompt, lock_button)
+
+    scan_prompt =  pygame.image.load("assets/scan_prompt.png").convert_alpha()    
+    scan_button = pygame.Rect((scan_prompt.get_width()/2), (HEIGHT)-(scan_prompt.get_height()+150), scan_prompt.get_width(), scan_prompt.get_height())
+    pygame.draw.rect(screen, GREY, scan_button)
+    screen.blit(scan_prompt, scan_button)
 
     pygame.draw.rect(screen, BLUE, pygame.Rect((WIDTH/2)-(BOARD_W/2), (HEIGHT/2)-(BOARD_H/2), BOARD_W, BOARD_H))
     for r in range(ROWS):
@@ -149,14 +153,17 @@ def draw_board(image, board):
             pygame.draw.circle(screen, color, ((WIDTH/2)-(BOARD_W/2) +
                                                 ((c+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((r+.5)*BOARD_H/ROWS)), RADIUS)
     
-    # col = example.solve(convert_board(board))
-    col = 4 - 1
-    for i in range(ROWS-1, -1, -1):
-        if board[i, col] == 0:
-            pygame.draw.circle(screen, GREEN, ((WIDTH/2)-(BOARD_W/2) +
-                            ((col+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((i+.5)*BOARD_H/ROWS)), RADIUS)
-            break
+    if col != -1:
+        col = col - 1 #Adjust for indexing
+        for i in range(ROWS-1, -1, -1):
+            if board[i, col] == 0:
+                pygame.draw.circle(screen, GREEN, ((WIDTH/2)-(BOARD_W/2) +
+                                ((col+.5)*BOARD_W/COLUMNS), (HEIGHT/2)-(BOARD_H/2) + ((i+.5)*BOARD_H/ROWS)), RADIUS)
+                break
+
     pygame.display.flip()
+
+    return (lock_button, scan_button)
 
 # Search the board to ensure it follows proper connect4 rules
 def get_best_board(old_board, new_board):
@@ -193,6 +200,7 @@ def get_best_board(old_board, new_board):
 
 # convert 2D array into solver format string
 def convert_board(board):
+    board = np.flipud(board)
     pending_moves = []
     next = first_player
     finalString = ""
@@ -201,38 +209,42 @@ def convert_board(board):
             if row[i] == 0:
                 continue
             elif next == "red" and row[i] == RED_PIECE:
-                finalString = finalString.join(str(i + 1))
+                finalString = "".join([finalString, str(i + 1)])
                 if len(pending_moves) != 0:
-                    finalString = finalString.join(str(pending_moves[0]))
+                    finalString = "".join([finalString, str(pending_moves[0])])
                     pending_moves[0] = pending_moves[-1]
                     pending_moves.pop()
                 else:
                     next = "yellow"
             elif next == "yellow" and row[i] == YELLOW_PIECE:
-                finalString = finalString.join(str(i + 1))
+                finalString = "".join([finalString, str(i + 1)])
                 if len(pending_moves) != 0:
-                    finalString = finalString.join(str(pending_moves[0]))
+                    finalString = "".join([finalString, str(pending_moves[0])])
                     pending_moves[0] = pending_moves[-1]
                     pending_moves.pop()
                 else:
                     next = "red"
             else:
                 pending_moves.append(str(i + 1))
-    finalString = finalString.join(pending_moves)
+    finalString = "".join([finalString] + pending_moves)
     return finalString
 
 # Main
 try:
     old_board = np.zeros((ROWS,COLUMNS))
     board = np.zeros((ROWS,COLUMNS))
+    scan = True
+    solving = False
+    col = -1
     while True:
-        # read frame and get predictions
-        ret, image = camera.read()
-        results = model(image, stream=True)
+        if scan:
+            # read frame and get predictions
+            ret, image = camera.read()
+            results = model(image, stream=True)
 
-        # save old board, get new board
-        old_board = board
-        board = read_frame(results)
+            # save old board, get new board
+            old_board = board
+            board = read_frame(results)
 
         ## Play connect4 here using refrenced board
         if state == "start_menu":
@@ -240,7 +252,7 @@ try:
 
         if state == "board":
             board = get_best_board(old_board, board)
-            draw_board(image, board)
+            board_buttons = draw_board(board, col)
 
         for event in pygame.event.get():
             if event.type == KEYDOWN or event.type == pygame.QUIT:
@@ -254,6 +266,14 @@ try:
                 elif buttons[1].collidepoint(event.pos):
                     state = "board"
                     first_player = "red"
+                elif board_buttons[0].collidepoint(event.pos) and not solving:
+                    scan = False
+                    col = example.solve(convert_board(board))
+                    solving = True
+                elif board_buttons[1].collidepoint(event.pos) and solving:
+                    scan = True
+                    col = -1
+                    solving = False
                             
 except KeyboardInterrupt or SystemExit:
     pygame.quit()
