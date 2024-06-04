@@ -1,3 +1,5 @@
+# Compile with: python test.py build_ext --inplace
+
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 

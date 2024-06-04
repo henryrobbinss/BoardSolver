@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import sys
 from ultralytics import YOLO
-import example
+#import example
 
 # CONSTANTS
 ROWS = 6
@@ -281,7 +281,7 @@ try:
                     first_player = "red"
                 elif board_buttons[0].collidepoint(event.pos) and not solving:
                     scan = False
-                    col = example.solve(convert_board(board))
+                    col = 1#example.solve(convert_board(board))
                     solving = True
                 elif board_buttons[1].collidepoint(event.pos) and solving:
                     scan = True
