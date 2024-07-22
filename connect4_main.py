@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import sys
 from ultralytics import YOLO
-import example
+#import example
 
 # CONSTANTS
 ROWS = 6
@@ -35,7 +35,7 @@ camera = cv2.VideoCapture(0)
 pygame.init()
 pygame.display.set_caption("Computer Vision Connect4")
 screen = pygame.display.set_mode([WIDTH,HEIGHT])
-model = YOLO("runs/detect/yolov8n_connect4/weights/best.pt")
+model = YOLO("runs/detect/yolov8l_connect42/weights/best.pt")
 
 # game states
 state = "start_menu"
@@ -111,17 +111,28 @@ def draw_menu():
     screen.fill(GREY)
     prompt =  pygame.image.load("assets/prompt1.png").convert_alpha()
     screen.blit(prompt, ((WIDTH/2)-(prompt.get_width()/2), (HEIGHT/2)-(prompt.get_height()/2)-100))
+
+    about_prompt =  pygame.image.load("assets/about_prompt.png").convert_alpha()
+    about_button = pygame.Rect((WIDTH/2)-(about_prompt.get_width()/2), (3*HEIGHT/4 + 50)-(about_prompt.get_height()/2), about_prompt.get_width(), about_prompt.get_height())
+    pygame.draw.rect(screen, GREY, about_button)
+    screen.blit(about_prompt, about_button)
     
     red_prompt =  pygame.image.load("assets/red_prompt.png").convert_alpha()
     yellow_prompt =  pygame.image.load("assets/yellow_prompt.png").convert_alpha()
     
-    r_button = pygame.Rect((WIDTH/3)-(red_prompt.get_width()/2), (3*HEIGHT/4)-(red_prompt.get_height()/2), red_prompt.get_width(), red_prompt.get_height())
-    y_button = pygame.Rect((2*WIDTH/3)-(yellow_prompt.get_width()/2), (3*HEIGHT/4)-(yellow_prompt.get_height()/2), yellow_prompt.get_width(), yellow_prompt.get_height())
+    r_button = pygame.Rect((WIDTH/3)-(red_prompt.get_width()/2)+75, (3*HEIGHT/4)-(red_prompt.get_height()/2)-100, red_prompt.get_width(), red_prompt.get_height())
+    y_button = pygame.Rect((2*WIDTH/3)-(yellow_prompt.get_width()/2)-75, (3*HEIGHT/4)-(yellow_prompt.get_height()/2)-100, yellow_prompt.get_width(), yellow_prompt.get_height())
 
     pygame.draw.rect(screen, GREY, r_button)
     pygame.draw.rect(screen, GREY, y_button)
     screen.blit(red_prompt, r_button)
     screen.blit(yellow_prompt, y_button)
+
+    name =  pygame.image.load("assets/name.png").convert_alpha()
+    screen.blit(name, ((WIDTH)-(name.get_width()) - 15, (HEIGHT)-(name.get_height())))
+    github =  pygame.image.load("assets/github-mark.png").convert_alpha()
+    github = pygame.transform.scale(github, (30, 30))
+    screen.blit(github, ((WIDTH)-(name.get_width()) - 25 - github.get_width(), (HEIGHT)-(name.get_height())))
 
     pygame.display.flip()
 
@@ -236,6 +247,8 @@ try:
     scan = True
     solving = False
     col = -1
+    buttons = []
+    board_buttons = []
     while True:
         if scan:
             # read frame and get predictions
@@ -268,7 +281,7 @@ try:
                     first_player = "red"
                 elif board_buttons[0].collidepoint(event.pos) and not solving:
                     scan = False
-                    col = example.solve(convert_board(board))
+                    col = 1#example.solve(convert_board(board))
                     solving = True
                 elif board_buttons[1].collidepoint(event.pos) and solving:
                     scan = True
